@@ -11,7 +11,7 @@ import {
   type TradeDraft,
 } from "@/lib/trading/types";
 import { Chip, Field, GlassCard, Input, SectionTitle, Select, Textarea } from "./primitives";
-import { Dropzone } from "./Dropzone";
+import { MediaAttachments } from "./MediaAttachments";
 import { cn } from "@/lib/utils";
 
 export function TradeForm({
@@ -187,24 +187,10 @@ export function TradeForm({
       </div>
 
       <div className="mt-6">
-        <SectionTitle>Screenshots</SectionTitle>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Dropzone
-            label="D1 screenshot"
-            value={draft.screenshots.d1}
-            onChange={(v) => update("screenshots", { ...draft.screenshots, d1: v })}
-          />
-          <Dropzone
-            label="4H screenshot"
-            value={draft.screenshots.h4}
-            onChange={(v) => update("screenshots", { ...draft.screenshots, h4: v })}
-          />
-          <Dropzone
-            label="15M screenshot"
-            value={draft.screenshots.m15}
-            onChange={(v) => update("screenshots", { ...draft.screenshots, m15: v })}
-          />
-        </div>
+        <MediaAttachments
+          media={draft.media}
+          onUpdate={(media) => update('media', media)}
+        />
       </div>
     </GlassCard>
   );

@@ -50,7 +50,7 @@ function Dashboard() {
     return Number.isFinite(n) ? n : null;
   };
 
-  const saveTrade = () => {
+  const saveTrade = async () => {
     const trade: Trade = {
       ...draft,
       id: crypto.randomUUID(),
@@ -60,7 +60,7 @@ function Dashboard() {
       resultR: num(draft.resultR),
       takeTrade: verdict.decision,
     };
-    addTrade(trade);
+    await addTrade(trade);
     setDraft(emptyDraft());
     toast.success("Trade saved to your journal");
   };
@@ -80,7 +80,7 @@ function Dashboard() {
                 Trading Dashboard
               </h1>
               <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                Journal + Model Dataset · stored in this browser
+                Journal + Model Dataset · synced to your cloud
               </p>
             </div>
           </div>
@@ -96,7 +96,7 @@ function Dashboard() {
 
             <button
               type="button"
-              onClick={saveTrade}
+              onClick={() => void saveTrade()}
               className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 font-display text-base font-bold tracking-wide text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 hover:shadow-electric-glow active:translate-y-0"
             >
               <Save className="h-5 w-5" /> Save Trade

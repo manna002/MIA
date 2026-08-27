@@ -20,6 +20,9 @@ Rules:
 - Ground every claim in the supplied dataset. Quote real counts, win rates and average R.
 - Highlight which factor combinations have historically WON and which have LOST for this trader.
 - Call out recurring mistake tags and their cost in R.
+- When asked about Sharpe ratio, calculate it properly from the R-multiple data.
+- When asked about probability of a setup, compute it from the historical data.
+- Provide actionable advice: which setups to focus on, which to avoid, and what changes will improve win rate.
 - Be direct and concise. Use short paragraphs or tight bullet lists. No filler, no disclaimers.
 - If the dataset is empty or too small, say so plainly and tell them what to log next.`;
 
@@ -27,9 +30,11 @@ export const Route = createFileRoute("/api/mentor")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env["LOVABLE_API_KEY"];
+        const apiKey = process.env["GROQ_API_KEY"];
         if (!apiKey) {
-          return new Response("AI is not configured.", { status: 500 });
+          return new Response("AI is not configured. Set GROQ_API_KEY in your .env file.", {
+            status: 500,
+          });
         }
 
         let parsed;
@@ -39,47 +44,31 @@ export const Route = createFileRoute("/api/mentor")({
           return new Response("Invalid request.", { status: 400 });
         }
 
-        const input = [
-          {
-            role: "developer" as const,
-            content: [{ type: "input_text" as const, text: SYSTEM_PROMPT }],
-          },
+        const messages = [
+          { role: "system" as const, content: SYSTEM_PROMPT },
           {
             role: "user" as const,
-            content: [
-              {
-                type: "input_text" as const,
-                text: `Here is my current trading dataset (JSON summary):\n\n${parsed.context}`,
-              },
-            ],
+            content: `Here is my current trading dataset (JSON summary):\n\n${parsed.context}`,
           },
-          ...parsed.messages.map((m) =>
-            m.role === "assistant"
-              ? {
-                  role: "assistant" as const,
-                  content: [{ type: "output_text" as const, text: m.content }],
-                }
-              : {
-                  role: "user" as const,
-                  content: [{ type: "input_text" as const, text: m.content }],
-                },
-          ),
+          ...parsed.messages.map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          })),
         ];
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+        const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           signal: request.signal,
           headers: {
             "Content-Type": "application/json",
-            "Lovable-API-Key": apiKey,
-            "X-Lovable-AIG-SDK": "fetch",
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            model: "openai/gpt-5.6-sol",
-            input,
+            model: "llama-3.3-70b-versatile",
+            messages,
             stream: true,
-            store: false,
-            reasoning: { effort: "low", summary: "auto" },
+            temperature: 0.6,
+            max_tokens: 2048,
           }),
         });
 
@@ -88,8 +77,8 @@ export const Route = createFileRoute("/api/mentor")({
           const message =
             upstream.status === 429
               ? "Rate limited — wait a moment and ask again."
-              : upstream.status === 402
-                ? "AI credits are exhausted for this workspace."
+              : upstream.status === 401
+                ? "Invalid Groq API key. Check your .env file."
                 : `Mentor unavailable (${upstream.status}). ${detail.slice(0, 200)}`;
           return new Response(message, { status: upstream.status || 500 });
         }
@@ -114,11 +103,13 @@ export const Route = createFileRoute("/api/mentor")({
                   if (!payload || payload === "[DONE]") continue;
                   try {
                     const event = JSON.parse(payload) as {
-                      type?: string;
-                      delta?: string;
+                      choices?: Array<{
+                        delta?: { content?: string };
+                      }>;
                     };
-                    if (event.type === "response.output_text.delta" && event.delta) {
-                      controller.enqueue(encoder.encode(event.delta));
+                    const content = event.choices?.[0]?.delta?.content;
+                    if (content) {
+                      controller.enqueue(encoder.encode(content));
                     }
                   } catch {
                     /* ignore partial frames */

@@ -55,10 +55,17 @@ export type Grade = (typeof GRADES)[number];
 export type Outcome = (typeof OUTCOMES)[number];
 export type Direction = (typeof DIRECTIONS)[number];
 
-export type Screenshots = {
-  d1: string | null;
-  h4: string | null;
-  m15: string | null;
+export const SCREENSHOT_TIMEFRAMES = [
+  'Monthly', 'Weekly', 'Daily', '4H', '1H', '30M', '15M', '5M', '1M', 'Extra',
+] as const;
+export type ScreenshotTimeframe = (typeof SCREENSHOT_TIMEFRAMES)[number];
+
+export type MediaAttachment = {
+  id: string;
+  timeframe: ScreenshotTimeframe;
+  inputType: 'file' | 'link';
+  value: string | null; // base64 data URL for file, or URL string for link
+  fileName?: string;
 };
 
 export type TradeDraft = {
@@ -78,7 +85,7 @@ export type TradeDraft = {
   mistakes: string[];
   whyTaken: string;
   improvement: string;
-  screenshots: Screenshots;
+  media: MediaAttachment[];
 };
 
 export type Trade = Omit<TradeDraft, "slSize" | "plannedR" | "resultR"> & {
@@ -116,6 +123,6 @@ export function emptyDraft(): TradeDraft {
     mistakes: [],
     whyTaken: "",
     improvement: "",
-    screenshots: { d1: null, h4: null, m15: null },
+    media: [],
   };
 }
